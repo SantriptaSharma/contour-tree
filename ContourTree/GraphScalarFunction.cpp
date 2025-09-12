@@ -69,7 +69,11 @@ void GraphScalarFunction::loadGraph(std::string edgeFile) {
 
     int v1 = 0;
     while(std::getline(ip,s)) {
-        std::vector<std::string> adj = splitString(s,',');
+        
+        if (s[0] == '#') continue; // skip comment lines
+        if (s.empty()) continue;   // skip empty lines
+
+        std::vector<std::string> adj = splitString(s,' ');
         for(std::string &e: adj) {
             int v2 = std::atoi(e.c_str());
             if(v1 != v2) {
