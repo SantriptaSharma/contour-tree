@@ -17,19 +17,6 @@
 
 namespace py = pybind11;
 
-void loadGraphFromAdjList(contourtree::GraphScalarFunction &self, const std::vector<std::vector<int64_t>> adjList) {
-    
-    for (size_t v1 = 0; v1 < adjList.size(); ++v1) {
-        for (size_t j = 0; j < adjList[v1].size(); ++j) {
-            int64_t v2 = adjList[v1][j];
-            if (v1 != v2) {
-                self.vertices[v1].adj.insert(static_cast<int64_t>(v2));
-                self.vertices[v2].adj.insert(static_cast<int64_t>(v1));
-            }
-        }
-    }
-}
-
 PYBIND11_MODULE(pyct, m) {
     m.doc() = "Python bindings for Contour Tree library";
     
@@ -62,12 +49,13 @@ PYBIND11_MODULE(pyct, m) {
     py::class_<contourtree::GraphScalarFunction, contourtree::ScalarFunction>(m, "GraphScalarFunction")
         .def(py::init<>())
         .def("getVertexCount", &contourtree::GraphScalarFunction::getVertexCount)
+        .def("getFunctionValue", &contourtree::GraphScalarFunction::getFunctionValue)
         .def("initialize", &contourtree::GraphScalarFunction::initialize,
              "Initialize graph with specified number of nodes")
         .def("loadGraph", &contourtree::GraphScalarFunction::loadGraph,
              "Load graph from edge file")
-        .def("loadGraphFromAdjList", &loadGraphFromAdjList,
-             "Load graph from a numpy adjacency list")
+        .def("loadGraphFromAdjList", &contourtree::GraphScalarFunction::loadGraphFromAdjList, 
+            "Load graph from an adjacency list")
         .def("updateFnValues", &contourtree::GraphScalarFunction::updateFnValues,
              "Update function values");
 

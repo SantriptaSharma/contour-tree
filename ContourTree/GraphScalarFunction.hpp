@@ -27,6 +27,7 @@ public:
 
 public:
     void initialize(uint32_t noNodes);
+    void loadGraphFromAdjList(const std::vector<std::vector<int64_t>> adjList);
     void loadGraph(std::string edgeFile);
     void updateFnValues(const std::vector<scalar_t> &fn);
 

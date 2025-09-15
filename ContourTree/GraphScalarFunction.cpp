@@ -52,6 +52,29 @@ void GraphScalarFunction::initialize(uint32_t noNodes) {
 
 }
 
+void GraphScalarFunction::loadGraphFromAdjList(const std::vector<std::vector<int64_t>> adjList) {
+    
+    initialize(adjList.size());
+
+    for (size_t v1 = 0; v1 < adjList.size(); ++v1) {
+        for (size_t j = 0; j < adjList[v1].size(); ++j) {
+            int64_t v2 = adjList[v1][j];
+            if (v1 != v2) {
+                vertices[v1].adj.insert(static_cast<int64_t>(v2));
+                vertices[v2].adj.insert(static_cast<int64_t>(v1));
+            }
+        }
+    }
+
+    maxStar = 0;
+    for (size_t v = 0; v < vertices.size(); ++v) {
+        int starSize = adjList[v].size();
+        if (starSize > maxStar) {
+            maxStar = starSize;
+        }
+    }
+}
+
 
 inline std::vector<std::string> splitString(std::string s, char delim) {
     std::vector<std::string> ret;
