@@ -68,7 +68,7 @@ void GraphScalarFunction::loadGraphFromAdjList(const std::vector<std::vector<int
 
     maxStar = 0;
     for (size_t v = 0; v < vertices.size(); ++v) {
-        int starSize = adjList[v].size();
+        int starSize = vertices[v].adj.size();
         if (starSize > maxStar) {
             maxStar = starSize;
         }
@@ -86,31 +86,32 @@ inline std::vector<std::string> splitString(std::string s, char delim) {
     return ret;
 }
 
-void GraphScalarFunction::loadGraph(std::string edgeFile) {
+void GraphScalarFunction::loadGraph(std::string edgeFile, char sep) {
     std::ifstream ip(edgeFile);
     std::string s;
 
-    int v1 = 0;
+    std::vector<std::vector<int64_t>> adjList;
+
     while(std::getline(ip,s)) {
         
         if (s[0] == '#') continue; // skip comment lines
         if (s.empty()) continue;   // skip empty lines
 
-        std::vector<std::string> adj = splitString(s,' ');
-        for(std::string &e: adj) {
-            int v2 = std::atoi(e.c_str());
-            if(v1 != v2) {
-                this->vertices[v1].adj.insert(v2);
-                this->vertices[v2].adj.insert(v1);
+        adjList.push_back(std::vector<int64_t>());
+        auto &adj = adjList.back();
+
+        std::vector<std::string> parts = splitString(s, sep);
+        for(std::string &e: parts) {
+            int o = std::stoi(e);
+
+            // ignore self-connected edges
+            if (o != (adjList.size() - 1)) {
+                adj.push_back(o);
             }
         }
-        v1 ++;
     }
 
-    maxStar = 0;
-    for(int i = 0;i < nv;i ++) {
-        maxStar = std::max(maxStar,(int)vertices[i].adj.size());
-    }
+    loadGraphFromAdjList(adjList);
 }
 
 void GraphScalarFunction::updateFnValues(const std::vector<scalar_t> &fn) {
