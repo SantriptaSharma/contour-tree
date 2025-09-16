@@ -4,7 +4,7 @@
 #include <cmath>
 
 #include <MergeTree.hpp>
-#include <Grid3D.hpp>
+#include <GraphScalarFunction.hpp>
 #include "ContourTreeData.hpp"
 #include "SimplifyCT.hpp"
 #include "Persistence.hpp"
@@ -27,21 +27,35 @@ using namespace contourtree;
  *      dataName.order.dat: metadata about the branch decomposition
  *      dataName.order.bin: simplification order to generate the branch decomposition
  */
-template <class T>
-void exampleProcessing(std::string dataName, int dimx, int dimy, int dimz, bool persistence = true) {
+void exampleProcessing(std::string adjPath, std::string dataName, bool persistence = true) {
     std::chrono::time_point<std::chrono::system_clock> start, end;
-    Grid3D<T> grid(dimx,dimy,dimz);
+    GraphScalarFunction fn;
+    
+    fn.loadGraph(adjPath);
 
     std::string data = dataName;
 
     start = std::chrono::system_clock::now();
-    grid.loadGrid(data + ".raw");
+    
+    std::ifstream in(dataName + ".txt");
+
+    std::vector<scalar_t> values;
+
+    for (std::string line; std::getline(in, line);) {
+        if (line.size() == 0) continue;
+
+        values.push_back(strtof(line.c_str(), nullptr));
+    }
+
+    fn.updateFnValues(values);
+    in.close();
+
     MergeTree ct;
 
     // Change to TypeJoinTree or TypeSplitTree for join and split tree computation respectively
     contourtree::TreeType tree = TypeContourTree;
     std::cout << "computing join tree" << std::endl;
-    ct.computeTree(&grid,tree);
+    ct.computeTree(std::make_shared<GraphScalarFunction>(fn), tree);
     end = std::chrono::system_clock::now();
     std::cout << "Time to compute contour tree: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
     ct.output(data, tree);
@@ -65,7 +79,7 @@ void exampleProcessing(std::string dataName, int dimx, int dimy, int dimz, bool 
     end = std::chrono::system_clock::now();
     std::cout << "Time to simplify: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms\n";
 
-    sim.outputOrder(data,true);
+    sim.outputOrder(data, true);
     std::cout << "done" << std::endl;
 }
 
@@ -130,5 +144,14 @@ void exampleLayout(std::string dataName, int &topk, float threshold = 0) {
 }
 
 int main(int argc, char *argv[]) {
-    return 0;
+    if (argc < 3) {
+        std::cout << "Usage: ./main <path to adjacency list> <path to input scalar function (without extension)>\n";
+        return 0;
+    }
+
+    std::string adjName = argv[1];
+    std::string dataName = argv[2];
+
+    std::cin.get();
+    exampleProcessing(adjName, dataName, true);
 }
