@@ -108,10 +108,26 @@ PYBIND11_MODULE(pyct, m) {
                 py::arg("fileName"), py::arg("treeType"),
                 "Write tree data to files with the given base name");
 
+    py::class_<contourtree::Node, std::shared_ptr<contourtree::Node>>(m, "Node")
+        .def(py::init<>())
+        .def_readonly("next", &contourtree::Node::next)
+        .def_readonly("prev", &contourtree::Node::prev);
+
+    py::class_<contourtree::Arc, std::shared_ptr<contourtree::Arc>>(m, "Arc")
+        .def(py::init<>())
+        .def_readonly("from", &contourtree::Arc::from)
+        .def_readonly("to", &contourtree::Arc::to)
+        .def_readonly("id", &contourtree::Arc::id);
+
     // Expose ContourTreeData class (minimal)
     py::class_<contourtree::ContourTreeData, std::shared_ptr<contourtree::ContourTreeData>>(m, "ContourTreeData")
         .def(py::init<>())
-        .def("loadBinFile", &contourtree::ContourTreeData::loadBinFile, py::arg("filename"), "Load data from a binary file");
+        .def("loadBinFile", &contourtree::ContourTreeData::loadBinFile, py::arg("filename"), "Load data from a binary file")
+        .def_readonly("fnVals", &contourtree::ContourTreeData::fnVals)
+        .def_readonly("type", &contourtree::ContourTreeData::type)
+        .def_readonly("nodes", &contourtree::ContourTreeData::nodes)
+        .def_readonly("nodeMap", &contourtree::ContourTreeData::nodeMap)
+        .def_readonly("arcs", &contourtree::ContourTreeData::arcs);
 
     // Base class for similarity functions (no Python overrides needed right now)
     py::class_<contourtree::SimFunction, std::shared_ptr<contourtree::SimFunction>>(m, "SimFunction");
