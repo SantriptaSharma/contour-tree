@@ -298,4 +298,54 @@ void SimplifyCT::outputOrder(std::string fileName, bool normalize) {
     of.close();
 }
 
+void SimplifyCT::getSimplificationPlot(const std::vector<uint32_t> &order, const std::vector<float> &wts, char type, std::vector<float> &fns, std::vector<int32_t> &minct, 
+                                        std::vector<int32_t> &maxct) {
+    initSimplification(NULL);
+
+    std::cout << "going over order queue" << std::endl;
+    for (int i = 0; i < order.size(); i++) {
+        inq[order.at(i)] = true;
+    }
+
+    fns.clear();
+    minct.clear();
+    maxct.clear();
+    fns.push_back(0);
+    minct.push_back(0);
+    maxct.push_back(0);
+
+    int minrem = 0;
+    int maxrem = 0;
+    for (int i = 0; i < order.size() - 1; i++) {
+        uint32_t ano = order.at(i);
+        if (!isCandidate(branches[ano])) {
+            std::cout << "failing candidate test" << std::endl;
+            assert(false);
+        }
+        float fn = wts.at(i);
+        uint32_t from = branches[ano].from;
+        if(type == MINIMUM && data->type[from] == MINIMUM) {
+            minrem ++;
+        }
+        uint32_t to = branches[ano].to;
+        if(type == MAXIMUM && data->type[to] == MAXIMUM) {
+            maxrem ++;
+        }
+        inq[ano] = false;
+        removeArc(ano);
+
+        fns.push_back(fn);
+        minct.push_back(minrem);
+        maxct.push_back(maxrem);
+    }
+
+    for(int i = 0;i < fns.size();i ++) {
+        minct[i] = minrem - minct[i] + 1;
+        maxct[i] = maxrem - maxct[i] + 1;
+        if(i > 0) {
+            fns[i] = std::max(fns[i],fns[i-1]);
+        }
+    }
+}
+
 }  // namespace contourtree

@@ -149,7 +149,18 @@ PYBIND11_MODULE(pyct, m) {
             static_cast<void (contourtree::SimplifyCT::*)(contourtree::SimFunction*)>(&contourtree::SimplifyCT::simplify),
             py::arg("simFn"),
             "Simplify using Persistence or HyperVolume")
-        .def("outputOrder", &contourtree::SimplifyCT::outputOrder, py::arg("fileName"), py::arg("normalize"), "Write the branch removal order to disk");
+        .def("outputOrder", &contourtree::SimplifyCT::outputOrder, py::arg("fileName"), py::arg("normalize"), "Write the branch removal order to disk")
+        .def("getSimplificationPlot",  [](contourtree::SimplifyCT& self, const std::vector<uint32_t>& order, const std::vector<float>& wts, int32_t type) {
+            std::vector<float> fns;
+            std::vector<int32_t> minct, maxct;
+
+            char t = static_cast<char>(type);
+
+            self.getSimplificationPlot(order, wts, t, fns, minct, maxct);
+        
+            return py::make_tuple(fns, minct, maxct);
+        }, py::arg("order"), py::arg("wts"), py::arg("type"),
+           "Get function values and counts of minima/maxima at each of them for simplification plot");
 
     // Expose TopologicalFeatures::Feature class
     py::class_<contourtree::Feature, std::shared_ptr<contourtree::Feature>>(m, "Feature")

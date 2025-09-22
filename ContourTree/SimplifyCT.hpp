@@ -31,6 +31,8 @@ public:
     int simplify(const std::vector<uint32_t>& order, int topk = -1, float th = 0,
                   const std::vector<float>& wts = std::vector<float>());
     void outputOrder(std::string fileName, bool normalize);
+    void getSimplificationPlot(const std::vector<uint32_t> &order, const std::vector<float> &wts, char type, std::vector<float> &fns,
+                                std::vector<int32_t> &minct, std::vector<int32_t> &maxct);
 
 protected:
     void initSimplification(SimFunction* f);
