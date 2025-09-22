@@ -115,7 +115,7 @@ PYBIND11_MODULE(pyct, m) {
 
     py::class_<contourtree::Arc, std::shared_ptr<contourtree::Arc>>(m, "Arc")
         .def(py::init<>())
-        .def_readonly("from", &contourtree::Arc::from)
+        .def_readonly("frm", &contourtree::Arc::from)
         .def_readonly("to", &contourtree::Arc::to)
         .def_readonly("id", &contourtree::Arc::id);
 
@@ -182,7 +182,8 @@ PYBIND11_MODULE(pyct, m) {
             int topk_copy = topk;
             auto features = self.getPartitionedExtremaFeatures(topk_copy, th);
             return py::make_tuple(features, topk_copy);
-        }, py::arg("topk"), py::arg("th") = 0.0f, "Returns tuple of (features, updated_topk)");
+        }, py::arg("topk"), py::arg("th") = 0.0f, "Returns tuple of (features, updated_topk)")
+        .def_readonly("ctdata", &contourtree::TopologicalFeatures::ctdata);
 
     // Expose Point struct
     py::class_<contourtree::Point, std::shared_ptr<contourtree::Point>>(m, "Point")
