@@ -101,7 +101,7 @@ void ContourTreeData::loadData(const std::vector<int64_t>& nodeids,
     for (uint32_t i = 0; i < noNodes; i++) {
         assert(nodefns[i] >= minf && nodefns[i] <= maxf);
         nodeVerts[i] = nodeids[i];
-        fnVals[i] = (float)(nodefns[i] - minf) / (maxf - minf);
+        fnVals[i] = nodefns[i];
         type[i] = nodeTypes[i];
         nodeMap[nodeVerts[i]] = i;
         maxNodeId = std::max(maxNodeId,nodeVerts[i]);
