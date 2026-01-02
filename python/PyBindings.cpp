@@ -198,4 +198,7 @@ PYBIND11_MODULE(pyct, m) {
         .def("layoutTree", &contourtree::LayoutCT::layoutTree, py::arg("simplifiedCount"))
         .def("getNodeLocations", &contourtree::LayoutCT::getNodeLocations);
 
+    // Expose SaveLayoutToOFF function
+    m.def("SaveLayoutToOFF", &contourtree::SaveLayoutToOFF, py::arg("dataName"), py::arg("topk"), py::arg("thresh"),
+          "Save layout to OFF file");
 }

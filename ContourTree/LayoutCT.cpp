@@ -192,4 +192,45 @@ void LayoutCT::assignBranchIds() {
     }
 }
 
-} // namespace contourtree
+static std::vector<std::string> CP_NAMES = {
+    "REGULAR", "MINIMUM", "MAXIMUM", "INVALID", "SADDLE"
+};
+
+void SaveLayoutToOFF(std::string dataName, int& topk, float threshold) {
+    TopologicalFeatures topoFeatures;
+    topoFeatures.loadData(dataName);
+
+    std::vector<Feature> features = topoFeatures.getArcFeatures(topk,threshold);
+    
+    LayoutCT layout(&topoFeatures);
+    layout.layoutTree(topk);
+    std::unordered_map<uint32_t, Point> locations = layout.getNodeLocations();
+
+    int ct = 0;
+    std::unordered_map<uint32_t,uint32_t> nodemap;
+    std::vector<uint32_t> nodeids;
+    for(auto l: locations) {
+        nodemap[l.first] = ct ++;
+        nodeids.push_back(l.first);
+    }
+
+    ContourTreeData &data = topoFeatures.ctdata;
+
+    std::ofstream op(dataName + ".off");
+    op << "OFF\n";
+    op << ct << " " << features.size() << " 0\n";
+    for(int i = 0;i < ct; i++) {
+        op << locations[nodeids[i]].x << " " << locations[nodeids[i]].y << " " << locations[nodeids[i]].z << "\n";
+    }
+    for(int i = 0;i < features.size();i ++) {
+        size_t fromIndex = nodemap[features[i].from];
+        size_t toIndex = nodemap[features[i].to];
+        
+        op << "2 " << fromIndex << " " << toIndex << " " << data.fnVals[fromIndex] << " " << data.fnVals[toIndex] << " ";
+        op << CP_NAMES[data.type[fromIndex]] << " " << CP_NAMES[data.type[toIndex]] << "\n";
+    }
+    op.close();
+}
+
+
+}  // namespace contourtree

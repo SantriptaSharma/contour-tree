@@ -58,5 +58,7 @@ public:
     const float rootTwo;
 };
 
+void SaveLayoutToOFF(std::string dataName, int &topk, float thresh);
+
 } // namespace contourtree
 #endif // LAYOUTCT_HPP
