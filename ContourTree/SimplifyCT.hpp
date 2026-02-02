@@ -5,6 +5,7 @@
 #include "SimFunction.hpp"
 #include <queue>
 #include <vector>
+#include <set>
 
 #if defined(WIN32)
 #include <functional>
@@ -31,8 +32,20 @@ public:
     int simplify(const std::vector<uint32_t>& order, int topk = -1, float th = 0,
                   const std::vector<float>& wts = std::vector<float>());
     void outputOrder(std::string fileName, bool normalize);
-    void getSimplificationPlot(const std::vector<uint32_t> &order, const std::vector<float> &wts, char type, std::vector<float> &fns,
+    void getSimplificationPlot(const std::vector<uint32_t> &order, const std::vector<float> &wts, std::vector<float> &fns,
                                 std::vector<int32_t> &minct, std::vector<int32_t> &maxct);
+    void getFilteredSimplificationPlot(const std::vector<uint32_t> &order, const std::vector<float> &wts, std::vector<float> &fns, 
+                                        float minfnstart, float maxfnstart, float minfnend, float maxfnend, const std::set<char> &types,
+                                        std::vector<int32_t> &filteredct);
+    void getHomoValleyPlot(const std::vector<uint32_t>& order, const std::vector<float>& wts, std::vector<float>& fns, 
+                                 std::vector<int32_t>& remainingct, const std::vector<uint32_t> &labels, 
+                                 float homogeneity_threshold, const std::vector<uint32_t> &partition);
+    // void getFilteredSimplificationPlotHomogeneity(const std::vector<uint32_t> &order, const std::vector<float> &wts, std::vector<float> &fns, 
+    //                                     float minfnstart, float maxfnstart, float minfnend, float maxfnend, const std::set<char> &types,
+    //                                     std::vector<int32_t> &filteredct, const std::vector<uint32_t> &labels, float homogeneity_threshold,
+    //                                     const std::vector<uint32_t> &partition, std::vector<uint32_t> &branch_total_sizes,
+    //                                     std::vector<uint32_t> &branch_majority_labels, std::vector<uint32_t> &branch_majority_sizes,
+    //                                     std::vector<bool> &branch_was_homogeneous, std::vector<bool> &caused_homogeneous_destruction);
 
 protected:
     void initSimplification(SimFunction* f);

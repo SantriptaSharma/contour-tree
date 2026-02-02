@@ -150,17 +150,58 @@ PYBIND11_MODULE(pyct, m) {
             py::arg("simFn"),
             "Simplify using Persistence or HyperVolume")
         .def("outputOrder", &contourtree::SimplifyCT::outputOrder, py::arg("fileName"), py::arg("normalize"), "Write the branch removal order to disk")
-        .def("getSimplificationPlot",  [](contourtree::SimplifyCT& self, const std::vector<uint32_t>& order, const std::vector<float>& wts, int32_t type) {
+        .def("getSimplificationPlot",  [](contourtree::SimplifyCT& self, const std::vector<uint32_t>& order, const std::vector<float>& wts) {
             std::vector<float> fns;
             std::vector<int32_t> minct, maxct;
 
-            char t = static_cast<char>(type);
-
-            self.getSimplificationPlot(order, wts, t, fns, minct, maxct);
+            self.getSimplificationPlot(order, wts, fns, minct, maxct);
         
             return py::make_tuple(fns, minct, maxct);
-        }, py::arg("order"), py::arg("wts"), py::arg("type"),
-           "Get function values and counts of minima/maxima at each of them for simplification plot");
+        }, py::arg("order"), py::arg("wts"),
+           "Get function values and counts of minima/maxima at each of them for simplification plot")
+        .def("getFilteredSimplificationPlot",  [](contourtree::SimplifyCT& self, const std::vector<uint32_t>& order, const std::vector<float>& wts,
+                                                  float minfnstart, float maxfnstart, float minfnend, float maxfnend, const std::vector<char> &types) {
+            std::vector<float> fns;
+            std::vector<int32_t> filteredct;
+
+            std::set<char> type_set(types.begin(), types.end());
+
+            self.getFilteredSimplificationPlot(order, wts, fns, minfnstart, maxfnstart, minfnend, maxfnend, type_set, filteredct);
+        
+            return py::make_tuple(fns, filteredct);
+        }, py::arg("order"), py::arg("wts"), py::arg("minfnstart"), py::arg("maxfnstart"),
+           py::arg("minfnend"), py::arg("maxfnend"), py::arg("types"),
+           "Get function values and counts of filtered extrema at each of them for simplification plot")
+        .def("getHomoValleyPlot",  [](contourtree::SimplifyCT& self, const std::vector<uint32_t>& order, const std::vector<float>& wts,
+                                      const std::vector<uint32_t> &labels, float homogeneity_threshold, const std::vector<uint32_t> &partition) {
+            std::vector<float> fns;
+            std::vector<int32_t> remainingct;
+
+            self.getHomoValleyPlot(order, wts, fns, remainingct, labels, homogeneity_threshold, partition);
+        
+            return py::make_tuple(fns, remainingct);
+        }, py::arg("order"), py::arg("wts"), py::arg("labels"), py::arg("homogeneity_threshold"), py::arg("partition"),
+           "Get function values and counts of remaining homogeneous valleys at each simplification step");
+        // .def("getFilteredSimplificationPlotHomogeneity",  [](contourtree::SimplifyCT& self, const std::vector<uint32_t>& order, const std::vector<float>& wts,
+        //                                           float minfnstart, float maxfnstart, float minfnend, float maxfnend, const std::vector<char> &types,
+        //                                           const std::vector<uint32_t> &labels, float homogeneity_threshold, const std::vector<uint32_t> &partition) {
+        //     std::vector<float> fns;
+        //     std::vector<int32_t> filteredct;
+        //     std::vector<uint32_t> branch_total_sizes;
+        //     std::vector<uint32_t> branch_majority_labels;
+        //     std::vector<uint32_t> branch_majority_sizes;
+        //     std::vector<bool> branch_was_homogeneous;
+        //     std::vector<bool> caused_homogeneous_destruction;
+
+        //     std::set<char> type_set(types.begin(), types.end());
+
+        //     self.getFilteredSimplificationPlotHomogeneity(order, wts, fns, minfnstart, maxfnstart, minfnend, maxfnend, type_set, filteredct, labels, homogeneity_threshold, partition,
+        //                                                   branch_total_sizes, branch_majority_labels, branch_majority_sizes, branch_was_homogeneous, caused_homogeneous_destruction);
+        
+        //     return py::make_tuple(fns, filteredct, branch_total_sizes, branch_majority_labels, branch_majority_sizes, branch_was_homogeneous, caused_homogeneous_destruction);
+        // }, py::arg("order"), py::arg("wts"), py::arg("minfnstart"), py::arg("maxfnstart"),
+        //    py::arg("minfnend"), py::arg("maxfnend"), py::arg("types"), py::arg("labels"), py::arg("homogeneity_threshold"), py::arg("partition"),
+        //    "Get function values, counts, and metadata (total_size, majority_label, majority_size, was_homogeneous, caused_homogeneous_destruction) for each removed branch");
 
     // Expose TopologicalFeatures::Feature class
     py::class_<contourtree::Feature, std::shared_ptr<contourtree::Feature>>(m, "Feature")
