@@ -499,6 +499,155 @@ void SimplifyCT::getFilteredSimplificationPlot(const std::vector<uint32_t>& orde
         }
     }
 
+    void SimplifyCT::getHomoValleyPlotPlusCoverages(const std::vector<uint32_t>& order, const std::vector<float>& wts, std::vector<float>& fns,
+                                                    std::vector<int32_t>& remainingct, const std::vector<uint32_t>& labels,
+                                                    float homogeneity_threshold, const std::vector<uint32_t>& partition,
+                                                    std::vector<std::vector<double>>& maj_class_homo_coverages, std::vector<std::vector<int>>& maj_class_homo_counts,
+                                                    std::vector<std::vector<double>>& class_homo_coverages, std::vector<std::vector<double>>& class_coverages) {
+        initSimplification(NULL);
+
+        for (int i = 0; i < order.size(); i++) {
+            inq[order.at(i)] = true;
+        }
+
+        fns.clear();
+        remainingct.clear();
+        maj_class_homo_coverages.clear();
+        maj_class_homo_counts.clear();
+        class_homo_coverages.clear();
+        class_coverages.clear();
+
+        // Compute arc class counts
+        std::vector<std::vector<uint32_t>> arcClassCounts;
+        uint32_t num_classes = getNumClasses(labels);
+        computeArcClassCounts(partition, labels, num_classes, branches.size(), arcClassCounts);
+
+        // Count total points per class
+        std::vector<uint32_t> class_totals(num_classes, 0);
+        for (uint32_t label : labels) {
+            if (label < num_classes) {
+                class_totals[label]++;
+            }
+        }
+
+        // Lambda to compute all statistics
+        auto computeStats = [&](std::vector<uint32_t>& maj_class_points, std::vector<uint32_t>& valleys_per_class,
+                               std::vector<uint32_t>& class_homo_points, std::vector<uint32_t>& class_all_points) {
+            int count = 0;
+            maj_class_points.assign(num_classes, 0);
+            valleys_per_class.assign(num_classes, 0);
+            class_homo_points.assign(num_classes, 0);
+            class_all_points.assign(num_classes, 0);
+            
+            for (uint32_t b = 0; b < branches.size(); b++) {
+                if (!inq[b]) continue;
+                
+                auto from = branches[b].from;
+                bool is_minimum = (data->type[from] == MINIMUM);
+                
+                if (!is_minimum) continue;
+                
+                auto [majority_class, proportion] = getMajorityClass(b, branches, arcClassCounts);
+                bool is_homogeneous = (proportion >= homogeneity_threshold);
+                
+                // Count points from all classes in all valleys
+                Branch branch = branches[b];
+                for (uint32_t arc_id : branch.arcs) {
+                    if (arc_id < arcClassCounts.size()) {
+                        for (uint32_t c = 0; c < num_classes; c++) {
+                            class_all_points[c] += arcClassCounts[arc_id][c];
+                        }
+                    }
+
+                    if (!is_homogeneous) continue;
+                    
+                    if (arc_id < arcClassCounts.size() && majority_class < arcClassCounts[arc_id].size()) {
+                        maj_class_points[majority_class] += arcClassCounts[arc_id][majority_class];
+                    }
+
+                    if (arc_id < arcClassCounts.size()) {
+                        for (uint32_t c = 0; c < num_classes; c++) {
+                            class_homo_points[c] += arcClassCounts[arc_id][c];
+                        }
+                    }
+                }
+                
+                if (is_homogeneous) {
+                    count++;
+                    valleys_per_class[majority_class]++;
+                }
+            }
+            return count;
+        };
+
+        std::vector<uint32_t> maj_class_points;
+        std::vector<uint32_t> valleys_per_class;
+        std::vector<uint32_t> class_homo_points;
+        std::vector<uint32_t> class_all_points;
+        
+        // Initial state
+        fns.push_back(0);
+        remainingct.push_back(computeStats(maj_class_points, valleys_per_class, class_homo_points, class_all_points));
+        
+        // Compute coverages for initial state
+        std::vector<double> current_maj_class_homo_cov(num_classes);
+        std::vector<int> current_maj_class_homo_cnt(num_classes);
+        std::vector<double> current_class_homo_cov(num_classes);
+        std::vector<double> current_class_cov(num_classes);
+        
+        for (uint32_t c = 0; c < num_classes; c++) {
+            current_maj_class_homo_cnt[c] = valleys_per_class[c];
+            if (class_totals[c] > 0) {
+                current_maj_class_homo_cov[c] = static_cast<double>(maj_class_points[c]) / static_cast<double>(class_totals[c]);
+                current_class_homo_cov[c] = static_cast<double>(class_homo_points[c]) / static_cast<double>(class_totals[c]);
+                current_class_cov[c] = static_cast<double>(class_all_points[c]) / static_cast<double>(class_totals[c]);
+            } else {
+                current_maj_class_homo_cov[c] = 0.0;
+                current_class_homo_cov[c] = 0.0;
+                current_class_cov[c] = 0.0;
+            }
+        }
+        maj_class_homo_coverages.push_back(current_maj_class_homo_cov);
+        maj_class_homo_counts.push_back(current_maj_class_homo_cnt);
+        class_homo_coverages.push_back(current_class_homo_cov);
+        class_coverages.push_back(current_class_cov);
+
+        // Simplification loop
+        for (int i = 0; i < order.size() - 1; i++) {
+            uint32_t ano = order.at(i);
+            if (!isCandidate(branches[ano])) {
+                std::cout << "failing candidate test" << std::endl;
+                assert(false);
+            }
+
+            float fn = wts.at(i);
+            
+            inq[ano] = false;
+            removeArc(ano);
+            
+            fns.push_back(fn);
+            remainingct.push_back(computeStats(maj_class_points, valleys_per_class, class_homo_points, class_all_points));
+            
+            // Compute coverages for this step
+            for (uint32_t c = 0; c < num_classes; c++) {
+                current_maj_class_homo_cnt[c] = valleys_per_class[c];
+                if (class_totals[c] > 0) {
+                    current_maj_class_homo_cov[c] = static_cast<double>(maj_class_points[c]) / static_cast<double>(class_totals[c]);
+                    current_class_homo_cov[c] = static_cast<double>(class_homo_points[c]) / static_cast<double>(class_totals[c]);
+                    current_class_cov[c] = static_cast<double>(class_all_points[c]) / static_cast<double>(class_totals[c]);
+                } else {
+                    current_maj_class_homo_cov[c] = 0.0;
+                    current_class_homo_cov[c] = 0.0;
+                    current_class_cov[c] = 0.0;
+                }
+            }
+            maj_class_homo_coverages.push_back(current_maj_class_homo_cov);
+            maj_class_homo_counts.push_back(current_maj_class_homo_cnt);
+            class_homo_coverages.push_back(current_class_homo_cov);
+            class_coverages.push_back(current_class_cov);
+        }
+    }
+
     // IGNORE
     // void SimplifyCT::getFilteredSimplificationPlotHomogeneity(const std::vector<uint32_t>& order, const std::vector<float>& wts, std::vector<float>& fns, 
     //                                            float minfnstart, float maxfnstart, float minfnend, float maxfnend, const std::set<char> &types,

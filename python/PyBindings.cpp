@@ -181,7 +181,22 @@ PYBIND11_MODULE(pyct, m) {
         
             return py::make_tuple(fns, remainingct);
         }, py::arg("order"), py::arg("wts"), py::arg("labels"), py::arg("homogeneity_threshold"), py::arg("partition"),
-           "Get function values and counts of remaining homogeneous valleys at each simplification step");
+           "Get function values, counts of remaining homogeneous valleys, class coverages, and class valley counts at each simplification step")
+        .def("getHomoValleyPlotPlusCoverages",  [](contourtree::SimplifyCT& self, const std::vector<uint32_t>& order, const std::vector<float>& wts,
+                                      const std::vector<uint32_t> &labels, float homogeneity_threshold, const std::vector<uint32_t> &partition) {
+            std::vector<float> fns;
+            std::vector<int32_t> remainingct;
+            std::vector<std::vector<double>> maj_class_homo_coverages;
+            std::vector<std::vector<int>> maj_class_homo_counts;
+            std::vector<std::vector<double>> class_homo_coverages;
+            std::vector<std::vector<double>> class_coverages;
+
+            self.getHomoValleyPlotPlusCoverages(order, wts, fns, remainingct, labels, homogeneity_threshold, partition, 
+                                                maj_class_homo_coverages, maj_class_homo_counts, class_homo_coverages, class_coverages);
+        
+            return py::make_tuple(fns, remainingct, maj_class_homo_coverages, maj_class_homo_counts, class_homo_coverages, class_coverages);
+        }, py::arg("order"), py::arg("wts"), py::arg("labels"), py::arg("homogeneity_threshold"), py::arg("partition"),
+           "Get function values, counts, majority class homogeneous coverages, majority class homogeneous counts, class homogeneous coverages, and all class coverages");
         // .def("getFilteredSimplificationPlotHomogeneity",  [](contourtree::SimplifyCT& self, const std::vector<uint32_t>& order, const std::vector<float>& wts,
         //                                           float minfnstart, float maxfnstart, float minfnend, float maxfnend, const std::vector<char> &types,
         //                                           const std::vector<uint32_t> &labels, float homogeneity_threshold, const std::vector<uint32_t> &partition) {
