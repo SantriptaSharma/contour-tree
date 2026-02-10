@@ -21,6 +21,7 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree/TriMesh.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree/GraphScalarFunction.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree/LayoutCT.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree/RichFeature.hpp
 )
 
 # Add source files
@@ -35,6 +36,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree/TriMesh.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree/GraphScalarFunction.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree/LayoutCT.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree/RichFeature.cpp
 )
 
 set(MAIN_SOURCE_FILES

@@ -15,6 +15,7 @@
 #include "HyperVolume.hpp"
 #include "TopologicalFeatures.hpp"
 #include "LayoutCT.hpp"
+#include "RichFeature.hpp"
 
 namespace py = pybind11;
 
@@ -186,15 +187,16 @@ PYBIND11_MODULE(pyct, m) {
                                       const std::vector<uint32_t> &labels, float homogeneity_threshold, const std::vector<uint32_t> &partition) {
             std::vector<float> fns;
             std::vector<int32_t> remainingct;
+            std::vector<int32_t> remaininghomoct;
             std::vector<std::vector<double>> maj_class_homo_coverages;
             std::vector<std::vector<int>> maj_class_homo_counts;
             std::vector<std::vector<double>> class_homo_coverages;
             std::vector<std::vector<double>> class_coverages;
 
-            self.getHomoValleyPlotPlusCoverages(order, wts, fns, remainingct, labels, homogeneity_threshold, partition, 
+            self.getHomoValleyPlotPlusCoverages(order, wts, fns, remainingct, remaininghomoct, labels, homogeneity_threshold, partition, 
                                                 maj_class_homo_coverages, maj_class_homo_counts, class_homo_coverages, class_coverages);
         
-            return py::make_tuple(fns, remainingct, maj_class_homo_coverages, maj_class_homo_counts, class_homo_coverages, class_coverages);
+            return py::make_tuple(fns, remainingct, remaininghomoct, maj_class_homo_coverages, maj_class_homo_counts, class_homo_coverages, class_coverages);
         }, py::arg("order"), py::arg("wts"), py::arg("labels"), py::arg("homogeneity_threshold"), py::arg("partition"),
            "Get function values, counts, majority class homogeneous coverages, majority class homogeneous counts, class homogeneous coverages, and all class coverages");
         // .def("getFilteredSimplificationPlotHomogeneity",  [](contourtree::SimplifyCT& self, const std::vector<uint32_t>& order, const std::vector<float>& wts,
@@ -225,6 +227,32 @@ PYBIND11_MODULE(pyct, m) {
         .def_readwrite("frm", &contourtree::Feature::from)
         .def_readwrite("to", &contourtree::Feature::to);
 
+    // Expose RichFeature class
+    py::class_<contourtree::RichFeature, std::shared_ptr<contourtree::RichFeature>>(m, "RichFeature")
+        .def(py::init<>())
+        .def_readwrite("id", &contourtree::RichFeature::id)
+        .def_readwrite("frm", &contourtree::RichFeature::from)
+        .def_readwrite("to", &contourtree::RichFeature::to)
+        .def_readwrite("fn_frm", &contourtree::RichFeature::fn_from)
+        .def_readwrite("fn_to", &contourtree::RichFeature::fn_to)
+        .def_readwrite("type_frm", &contourtree::RichFeature::type_from)
+        .def_readwrite("type_to", &contourtree::RichFeature::type_to)
+        .def_readwrite("pers", &contourtree::RichFeature::persistence)
+        .def_readwrite("arcs", &contourtree::RichFeature::arcs)
+        .def_readwrite("members", &contourtree::RichFeature::members)
+        .def_readwrite("size", &contourtree::RichFeature::size)
+        .def_readwrite("class_counts", &contourtree::RichFeature::class_counts)
+        .def_readwrite("class_proportions", &contourtree::RichFeature::class_proportions)
+        .def_readwrite("class_coverage", &contourtree::RichFeature::class_coverage)
+        .def_readwrite("majority_class", &contourtree::RichFeature::majority_class)
+        .def_readwrite("major_class_size", &contourtree::RichFeature::major_class_size)
+        .def_readwrite("homogeneity", &contourtree::RichFeature::homogeneity)
+        .def_readwrite("pred_class_counts", &contourtree::RichFeature::pred_class_counts)
+        .def_readwrite("confusion", &contourtree::RichFeature::confusion)
+        .def_readwrite("pred_correct", &contourtree::RichFeature::pred_correct)
+        .def_readwrite("pred_incorrect", &contourtree::RichFeature::pred_incorrect)
+        .def_readwrite("pred_accuracy", &contourtree::RichFeature::pred_accuracy);
+
     // Expose TopologicalFeatures class
     py::class_<contourtree::TopologicalFeatures, std::shared_ptr<contourtree::TopologicalFeatures>>(m, "TopologicalFeatures")
         .def(py::init<>())
@@ -240,6 +268,16 @@ PYBIND11_MODULE(pyct, m) {
             return py::make_tuple(features, topk_copy);
         }, py::arg("topk"), py::arg("th") = 0.0f, "Returns tuple of (features, updated_topk)")
         .def_readonly("ctdata", &contourtree::TopologicalFeatures::ctdata);
+
+    // Expose computeRichFeatures function
+    m.def("computeRichFeatures", [](contourtree::TopologicalFeatures& topo, int topk, float threshold,
+                                     const std::vector<uint32_t>& partition, const std::vector<uint32_t>& labels,
+                                     const std::vector<uint32_t>& preds, const std::vector<uint32_t>& class_sizes) {
+        return contourtree::computeRichFeatures(topo, topk, threshold, partition, labels, preds, class_sizes);
+    }, py::arg("topo"), py::arg("topk"), py::arg("threshold"), py::arg("partition"), 
+       py::arg("labels"), py::arg("preds") = std::vector<uint32_t>(),
+       py::arg("class_sizes") = std::vector<uint32_t>(),
+       "Compute rich features with label and prediction metadata");
 
     // Expose Point struct
     py::class_<contourtree::Point, std::shared_ptr<contourtree::Point>>(m, "Point")

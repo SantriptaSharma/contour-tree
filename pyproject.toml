@@ -33,7 +33,7 @@ install.components = ["python"]
 # ──────────────────────────────────────────────────────────
 [tool.scikit-build.cmake]
 
-# build-type = "Debug"
+build-type = "Debug"
 source-dir = "."
 
 # After building, invoke `install`

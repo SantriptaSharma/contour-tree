@@ -469,7 +469,7 @@ void SimplifyCT::getFilteredSimplificationPlot(const std::vector<uint32_t>& orde
             int count = 0;
             for (uint32_t b = 0; b < branches.size(); b++) {
                 auto from = branches[b].from;
-                if (inq[b] && data->type[from] == MINIMUM) {
+                if (!removed[b] && data->type[from] == MINIMUM) {
                     auto [majority_class, proportion] = getMajorityClass(b, branches, arcClassCounts);
                     if (proportion >= homogeneity_threshold) {
                         count++;
@@ -500,7 +500,7 @@ void SimplifyCT::getFilteredSimplificationPlot(const std::vector<uint32_t>& orde
     }
 
     void SimplifyCT::getHomoValleyPlotPlusCoverages(const std::vector<uint32_t>& order, const std::vector<float>& wts, std::vector<float>& fns,
-                                                    std::vector<int32_t>& remainingct, const std::vector<uint32_t>& labels,
+                                                    std::vector<int32_t>& remainingct, std::vector<int32_t>& remaininghomoct, const std::vector<uint32_t>& labels,
                                                     float homogeneity_threshold, const std::vector<uint32_t>& partition,
                                                     std::vector<std::vector<double>>& maj_class_homo_coverages, std::vector<std::vector<int>>& maj_class_homo_counts,
                                                     std::vector<std::vector<double>>& class_homo_coverages, std::vector<std::vector<double>>& class_coverages) {
@@ -517,6 +517,10 @@ void SimplifyCT::getFilteredSimplificationPlot(const std::vector<uint32_t>& orde
         class_homo_coverages.clear();
         class_coverages.clear();
 
+        SimplifyCT gsim;
+        gsim.setInput(const_cast<ContourTreeData*>(data));
+        gsim.simplify(order, 1, 0, wts);
+
         // Compute arc class counts
         std::vector<std::vector<uint32_t>> arcClassCounts;
         uint32_t num_classes = getNumClasses(labels);
@@ -530,29 +534,90 @@ void SimplifyCT::getFilteredSimplificationPlot(const std::vector<uint32_t>& orde
             }
         }
 
+        // Helper lambda to check if path exists in contour tree
+        auto isPathPresent = [&](uint32_t from, uint32_t to) -> bool {
+            std::deque<uint32_t> queue;
+            queue.push_back(from);
+            while(queue.size() > 0) {
+                uint32_t v = queue.front();
+                queue.pop_front();
+                if(v == to) {
+                    return true;
+                }
+                if(data->fnVals[v] <= data->fnVals[to]) {
+                    for(auto ano: data->nodes[v].next) {
+                        assert(data->arcs[ano].from == v);
+                        queue.push_back(data->arcs[ano].to);
+                    }
+                }
+            }
+            return false;
+        };
+
+        // Helper lambda to recursively add all arcs from a branch and its children
+        auto addArcsToSet = [&](size_t bno, std::set<uint32_t>& arc_set) {
+            std::deque<size_t> queue;
+            queue.push_back(bno);
+            while (queue.size() > 0) {
+                size_t b = queue.front();
+                queue.pop_front();
+                Branch br = branches[b];
+                arc_set.insert(br.arcs.begin(), br.arcs.end());
+                for (int i = 0; i < br.children.size(); i++) {
+                    int bc = br.children[i];
+                    queue.push_back(bc);
+                }
+            }
+        };
+
         // Lambda to compute all statistics
         auto computeStats = [&](std::vector<uint32_t>& maj_class_points, std::vector<uint32_t>& valleys_per_class,
                                std::vector<uint32_t>& class_homo_points, std::vector<uint32_t>& class_all_points) {
             int count = 0;
+            int homo_count = 0;
+
             maj_class_points.assign(num_classes, 0);
             valleys_per_class.assign(num_classes, 0);
             class_homo_points.assign(num_classes, 0);
             class_all_points.assign(num_classes, 0);
             
             for (uint32_t b = 0; b < branches.size(); b++) {
-                if (!inq[b]) continue;
+                if (removed[b]) continue;
                 
                 auto from = branches[b].from;
                 bool is_minimum = (data->type[from] == MINIMUM);
                 
                 if (!is_minimum) continue;
+                count++;
+                
+                // Collect all arcs for this branch
+                std::set<uint32_t> all_arcs;
+                addArcsToSet(b, all_arcs);
+                
+                // Add arcs from multi-saddles using arcArrayUpper/Lower
+                Branch b1 = branches[b];
+                if(arcArrayUpper[b1.from].size() > 0) {
+                    uint32_t uv = gsim.vArrayNext[b1.from];
+                    if(isPathPresent(b1.to, uv)) {
+                        for(auto a : arcArrayUpper[b1.from]) {
+                            addArcsToSet(a, all_arcs);
+                        }
+                    }
+                }
+                if(arcArrayLower[b1.to].size() > 0) {
+                    uint32_t lv = gsim.vArrayPrev[b1.to];
+                    if(isPathPresent(lv, b1.from)) {
+                        for(auto a : arcArrayLower[b1.to]) {
+                            addArcsToSet(a, all_arcs);
+                        }
+                    }
+                }
                 
                 auto [majority_class, proportion] = getMajorityClass(b, branches, arcClassCounts);
                 bool is_homogeneous = (proportion >= homogeneity_threshold);
                 
                 // Count points from all classes in all valleys
-                Branch branch = branches[b];
-                for (uint32_t arc_id : branch.arcs) {
+                for (uint32_t arc_id : all_arcs) {
                     if (arc_id < arcClassCounts.size()) {
                         for (uint32_t c = 0; c < num_classes; c++) {
                             class_all_points[c] += arcClassCounts[arc_id][c];
@@ -573,11 +638,11 @@ void SimplifyCT::getFilteredSimplificationPlot(const std::vector<uint32_t>& orde
                 }
                 
                 if (is_homogeneous) {
-                    count++;
+                    homo_count++;
                     valleys_per_class[majority_class]++;
                 }
             }
-            return count;
+            return std::make_pair(count, homo_count);
         };
 
         std::vector<uint32_t> maj_class_points;
@@ -587,7 +652,9 @@ void SimplifyCT::getFilteredSimplificationPlot(const std::vector<uint32_t>& orde
         
         // Initial state
         fns.push_back(0);
-        remainingct.push_back(computeStats(maj_class_points, valleys_per_class, class_homo_points, class_all_points));
+        auto [ct, homo_ct] = computeStats(maj_class_points, valleys_per_class, class_homo_points, class_all_points);
+        remainingct.push_back(ct);
+        remaininghomoct.push_back(homo_ct);
         
         // Compute coverages for initial state
         std::vector<double> current_maj_class_homo_cov(num_classes);
@@ -626,7 +693,9 @@ void SimplifyCT::getFilteredSimplificationPlot(const std::vector<uint32_t>& orde
             removeArc(ano);
             
             fns.push_back(fn);
-            remainingct.push_back(computeStats(maj_class_points, valleys_per_class, class_homo_points, class_all_points));
+            auto [ct, homo_ct] = computeStats(maj_class_points, valleys_per_class, class_homo_points, class_all_points);
+            remainingct.push_back(ct);
+            remaininghomoct.push_back(homo_ct);
             
             // Compute coverages for this step
             for (uint32_t c = 0; c < num_classes; c++) {
@@ -647,164 +716,5 @@ void SimplifyCT::getFilteredSimplificationPlot(const std::vector<uint32_t>& orde
             class_coverages.push_back(current_class_cov);
         }
     }
-
-    // IGNORE
-    // void SimplifyCT::getFilteredSimplificationPlotHomogeneity(const std::vector<uint32_t>& order, const std::vector<float>& wts, std::vector<float>& fns, 
-    //                                            float minfnstart, float maxfnstart, float minfnend, float maxfnend, const std::set<char> &types,
-    //                                            std::vector<int32_t>& filteredct, const std::vector<uint32_t> &labels, float homogeneity_threshold,
-    //                                            const std::vector<uint32_t> &partition, std::vector<uint32_t> &branch_total_sizes,
-    //                                            std::vector<uint32_t> &branch_majority_labels, std::vector<uint32_t> &branch_majority_sizes,
-    //                                            std::vector<bool> &branch_was_homogeneous, std::vector<bool> &caused_homogeneous_destruction) {
-    //     initSimplification(NULL);
-
-    //     for (int i = 0; i < order.size(); i++) {
-    //         inq[order.at(i)] = true;
-    //     }
-
-    //     uint32_t num_classes = getNumClasses(labels);
-    //     std::vector<std::vector<uint32_t>> branchClassCounts = computeBranchClassCounts(partition, labels, num_classes, branches.size());
-
-    //     fns.clear();
-    //     filteredct.clear();
-    //     branch_total_sizes.clear();
-    //     branch_majority_labels.clear();
-    //     branch_majority_sizes.clear();
-    //     branch_was_homogeneous.clear();
-    //     caused_homogeneous_destruction.clear();
-    //     fns.push_back(0);
-    //     filteredct.push_back(0);
-    //     branch_total_sizes.push_back(0);
-    //     branch_majority_labels.push_back(0);
-    //     branch_majority_sizes.push_back(0);
-    //     branch_was_homogeneous.push_back(false);
-    //     caused_homogeneous_destruction.push_back(false);
-
-    //     int removed = 0;
-    //     for (int i = 0; i < order.size() - 1; i++) {
-    //         uint32_t ano = order.at(i);
-    //         if (!isCandidate(branches[ano])) {
-    //             std::cout << "failing candidate test" << std::endl;
-    //             assert(false);
-    //         }
-    //         float fn = wts.at(i);
-    //         uint32_t from = branches[ano].from;
-    //         uint32_t to = branches[ano].to;
-
-    //         char type_from = data->type[from];
-    //         char type_to = data->type[to];
-
-    //         bool is_valid_saddle = (type_from == SADDLE && type_to == SADDLE) && types.find(SADDLE) != types.end();
-    //         bool is_valid_minimum = (type_from == MINIMUM) && types.find(MINIMUM) != types.end();
-    //         bool is_valid_maximum = (type_to == MAXIMUM) && types.find(MAXIMUM) != types.end();
-    //         bool is_within_bounds = (data->fnVals[from] >= minfnstart && data->fnVals[from] <= maxfnstart) && (data->fnVals[to] >= minfnend && data->fnVals[to] <= maxfnend);
-
-    //         // Record metadata for the branch being removed
-    //         uint32_t total_size = 0;
-    //         uint32_t majority_size = 0;
-    //         uint32_t majority_label = 0;
-    //         for (uint32_t c = 0; c < num_classes; c++) {
-    //             uint32_t count = branchClassCounts[ano][c];
-    //             total_size += count;
-    //             if (count > majority_size) {
-    //                 majority_size = count;
-    //                 majority_label = c;
-    //             }
-    //         }
-    //         float proportion = (total_size > 0) ? static_cast<float>(majority_size) / static_cast<float>(total_size) : 0.0f;
-    //         bool was_homogeneous = (proportion > homogeneity_threshold);
-
-    //         // Before removing the arc, track which branches need to receive this branch's class counts
-    //         // We need to examine what removeArc and mergeVertex do
-    //         uint32_t mergedVertex = static_cast<uint32_t>(-1);
-    //         if (nodes[from].prev.size() == 0) {
-    //             mergedVertex = to;
-    //         }
-    //         if (nodes[to].next.size() == 0) {
-    //             mergedVertex = from;
-    //         }
-
-    //         // After removeArc is called, if mergeVertex happens, we need to transfer class counts
-    //         // We'll track the potential merge before calling removeArc
-    //         std::vector<uint32_t> transfer_from;
-    //         std::vector<uint32_t> transfer_to;
-            
-    //         if (mergedVertex != static_cast<uint32_t>(-1) && 
-    //             nodes[mergedVertex].prev.size() == 1 && nodes[mergedVertex].next.size() == 1) {
-    //             uint32_t prev = nodes[mergedVertex].prev.at(0);
-    //             uint32_t next = nodes[mergedVertex].next.at(0);
-                
-    //             // One of prev/next will remain active, the other will be removed and merged into it
-    //             if (inq[prev]) {
-    //                 // prev stays active (a), next is removed (rem)
-    //                 // Children of next will get prev as parent
-    //                 for (uint32_t ch : branches[next].children) {
-    //                     transfer_from.push_back(ch);
-    //                     transfer_to.push_back(prev);
-    //                 }
-    //                 // next itself merges into prev
-    //                 transfer_from.push_back(next);
-    //                 transfer_to.push_back(prev);
-    //             } else {
-    //                 // next stays active (a), prev is removed (rem)
-    //                 // Children of prev will get next as parent
-    //                 for (uint32_t ch : branches[prev].children) {
-    //                     transfer_from.push_back(ch);
-    //                     transfer_to.push_back(next);
-    //                 }
-    //                 // prev itself merges into next
-    //                 transfer_from.push_back(prev);
-    //                 transfer_to.push_back(next);
-    //             }
-    //         }
-
-    //         inq[ano] = false;
-    //         removeArc(ano);
-
-    //         // Track whether this removal caused any homogeneous destruction
-    //         bool this_removal_destroyed_homogeneity = false;
-            
-    //         // Now perform the class count transfers and check if homogeneity is destroyed
-    //         for (size_t t = 0; t < transfer_from.size(); t++) {
-    //             uint32_t from_branch = transfer_from[t];
-    //             uint32_t to_branch = transfer_to[t];
-    //             if (from_branch < arcClassCounts.size() && to_branch < arcClassCounts.size()) {
-    //                 // Get the majority class and proportion before merging
-    //                 auto [old_majority_class, old_proportion] = getMajorityClass(to_branch, branches, branchClassCounts);
-    //                 bool was_homogeneous = (old_proportion > homogeneity_threshold);
-                    
-    //                 // Transfer class counts
-    //                 for (uint32_t c = 0; c < num_classes; c++) {
-    //                     branchClassCounts[to_branch][c] += branchClassCounts[from_branch][c];
-    //                 }
-                    
-    //                 // Get the majority class and proportion after merging
-    //                 auto [new_majority_class, new_proportion] = getMajorityClass(to_branch);
-    //                 bool is_still_homogeneous_for_same_class = (new_proportion > homogeneity_threshold) && (new_majority_class == old_majority_class);
-                    
-    //                 // If it was homogeneous for a class but no longer homogeneous for that same class, count it
-    //                 if (was_homogeneous && !is_still_homogeneous_for_same_class && 
-    //                     (is_valid_minimum || is_valid_saddle || is_valid_maximum) && is_within_bounds) {
-    //                     removed++;
-    //                     this_removal_destroyed_homogeneity = true;
-    //                 }
-    //             }
-    //         }
-
-    //         fns.push_back(fn);
-    //         filteredct.push_back(removed);
-    //         branch_total_sizes.push_back(total_size);
-    //         branch_majority_labels.push_back(majority_label);
-    //         branch_majority_sizes.push_back(majority_size);
-    //         branch_was_homogeneous.push_back(was_homogeneous);
-    //         caused_homogeneous_destruction.push_back(this_removal_destroyed_homogeneity);
-    //     }
-
-    //     for(int i = 0;i < fns.size();i ++) {
-    //         filteredct[i] = removed - filteredct[i] + 1;
-    //         if(i > 0) {
-    //             fns[i] = std::max(fns[i],fns[i-1]);
-    //         }
-    //     }
-    // }    
 
 }  // namespace contourtree

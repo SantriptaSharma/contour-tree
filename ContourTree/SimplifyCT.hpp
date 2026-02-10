@@ -41,7 +41,7 @@ public:
                                  std::vector<int32_t>& remainingct, const std::vector<uint32_t> &labels, 
                                  float homogeneity_threshold, const std::vector<uint32_t> &partition);
     void getHomoValleyPlotPlusCoverages(const std::vector<uint32_t>& order, const std::vector<float>& wts, std::vector<float>& fns, 
-                                 std::vector<int32_t>& remainingct, const std::vector<uint32_t> &labels, float homogeneity_threshold, const std::vector<uint32_t> &partition,
+                                 std::vector<int32_t>& remainingct, std::vector<int32_t>& remaininghomoct, const std::vector<uint32_t> &labels, float homogeneity_threshold, const std::vector<uint32_t> &partition,
                                  std::vector<std::vector<double>>& maj_class_homo_coverages, std::vector<std::vector<int>>& maj_class_homo_counts,
                                  std::vector<std::vector<double>>& class_homo_coverages, std::vector<std::vector<double>>& class_coverages);
     // void getFilteredSimplificationPlotHomogeneity(const std::vector<uint32_t> &order, const std::vector<float> &wts, std::vector<float> &fns, 
