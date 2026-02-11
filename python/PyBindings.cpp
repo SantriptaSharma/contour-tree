@@ -279,6 +279,22 @@ PYBIND11_MODULE(pyct, m) {
        py::arg("class_sizes") = std::vector<uint32_t>(),
        "Compute rich features with label and prediction metadata");
 
+    // Expose FilterCriteria struct
+    py::class_<contourtree::FilterCriteria>(m, "FilterCriteria")
+        .def(py::init<>())
+        .def_readwrite("min_size", &contourtree::FilterCriteria::min_size)
+        .def_readwrite("max_size", &contourtree::FilterCriteria::max_size)
+        .def_readwrite("min_fn_from", &contourtree::FilterCriteria::min_fn_from)
+        .def_readwrite("max_fn_from", &contourtree::FilterCriteria::max_fn_from)
+        .def_readwrite("min_homogeneity", &contourtree::FilterCriteria::min_homogeneity)
+        .def_readwrite("max_homogeneity", &contourtree::FilterCriteria::max_homogeneity)
+        .def_readwrite("allowed_types", &contourtree::FilterCriteria::allowed_types);
+
+    // Expose filterFeatures function
+    m.def("filterFeatures", &contourtree::filterFeatures,
+          py::arg("features"), py::arg("criteria"),
+          "Filter features based on criteria, returns indices of matching features");
+
     // Expose Point struct
     py::class_<contourtree::Point, std::shared_ptr<contourtree::Point>>(m, "Point")
         .def(py::init<>())

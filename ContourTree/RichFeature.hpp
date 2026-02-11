@@ -6,6 +6,7 @@
 #include <set>
 #include <vector>
 #include <string>
+#include <limits>
 
 namespace contourtree {
 
@@ -53,6 +54,26 @@ std::vector<RichFeature> computeRichFeatures(
     const std::vector<uint32_t>& labels,
     const std::vector<uint32_t>& preds,
     const std::vector<uint32_t>& class_sizes = std::vector<uint32_t>()
+);
+
+struct FilterCriteria {
+    uint32_t min_size;
+    uint32_t max_size;
+    float min_fn_from;
+    float max_fn_from;
+    float min_homogeneity;
+    float max_homogeneity;
+    std::set<std::pair<char, char>> allowed_types;
+    
+    FilterCriteria() : min_size(0), max_size(UINT32_MAX),
+                       min_fn_from(0.0f), max_fn_from(std::numeric_limits<float>::max()),
+                       min_homogeneity(0.0f), max_homogeneity(1.0f) {}
+};
+
+// Filter features based on criteria, returns indices of matching features
+std::vector<size_t> filterFeatures(
+    const std::vector<RichFeature>& features,
+    const FilterCriteria& criteria
 );
 
 }  // namespace contourtree

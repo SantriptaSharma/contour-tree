@@ -130,4 +130,43 @@ std::vector<RichFeature> computeRichFeatures(
     return rich_features;
 }
 
+std::vector<size_t> filterFeatures(
+    const std::vector<RichFeature>& features,
+    const FilterCriteria& criteria
+) {
+    std::vector<size_t> filtered_indices;
+    filtered_indices.reserve(features.size());
+    
+    for (size_t i = 0; i < features.size(); i++) {
+        const RichFeature& feat = features[i];
+        
+        // Check size constraints
+        if (feat.size < criteria.min_size || feat.size > criteria.max_size) {
+            continue;
+        }
+        
+        // Check fn_from constraints
+        if (feat.fn_from < criteria.min_fn_from || feat.fn_from > criteria.max_fn_from) {
+            continue;
+        }
+        
+        // Check homogeneity constraints
+        if (feat.homogeneity < criteria.min_homogeneity || feat.homogeneity > criteria.max_homogeneity) {
+            continue;
+        }
+        
+        // Check type constraints
+        if (!criteria.allowed_types.empty()) {
+            std::pair<char, char> feat_type = {feat.type_from, feat.type_to};
+            if (criteria.allowed_types.find(feat_type) == criteria.allowed_types.end()) {
+                continue;
+            }
+        }
+        
+        filtered_indices.push_back(i);
+    }
+    
+    return filtered_indices;
+}
+
 }  // namespace contourtree
