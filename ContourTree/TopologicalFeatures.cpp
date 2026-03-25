@@ -5,6 +5,8 @@
 #include <cassert>
 
 #include "constants.h"
+#include <iomanip>
+#include <filesystem>
 
 namespace contourtree {
 
@@ -189,6 +191,37 @@ std::vector<Feature> TopologicalFeatures::getArcFeatures(int &topk, float th) {
         features.push_back(f);
     }
     return features;
+}
+
+void generatePersistenceDiagram(std::string filePrefix) {
+    TopologicalFeatures topoFeatures;
+    topoFeatures.loadData(filePrefix);
+    int topk = -1;
+    std::string opfile = filePrefix+"-persistence.csv";
+    std::ofstream op(opfile);
+    auto features = topoFeatures.getPartitionedExtremaFeatures(topk, 0);
+    for(auto f: features) {
+        int32_t from = topoFeatures.ctdata.nodeMap[f.from];
+        int32_t to = topoFeatures.ctdata.nodeMap[f.to];
+        double birth = topoFeatures.ctdata.fnVals[from];
+        double death = topoFeatures.ctdata.fnVals[to];
+        op << std::setprecision (15) << birth << "," << death << "\n";
+    }
+    op.close();
+}
+
+void generatePersistenceDiagrams(std::string folder) {
+    namespace fs = std::filesystem;
+    for (const auto& entry : fs::recursive_directory_iterator(folder)) {
+        if (entry.is_regular_file() && entry.path().extension() == ".bin") {
+            std::string filename = entry.path().stem().string();
+            if (filename.length() >= 3 && filename.substr(filename.length() - 3) == ".rg") {
+                std::string prefix = entry.path().parent_path().string() + "/" + filename.substr(0, filename.length() - 3);
+                std::cout << prefix << "\n";
+                generatePersistenceDiagram(prefix);
+            }
+        }
+    }
 }
 
 }  // namespace contourtree

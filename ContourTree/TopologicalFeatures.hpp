@@ -34,6 +34,9 @@ private:
                     std::set<size_t>& featureSet);
 };
 
+void generatePersistenceDiagram(std::string filePrefix);
+void generatePersistenceDiagrams(std::string folder);
+
 }  // namespace contourtree
 
 #endif  // TOPOLOGICALFEATURES_HPP
