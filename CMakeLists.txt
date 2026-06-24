@@ -44,8 +44,13 @@ set(MAIN_SOURCE_FILES
 )
 
 
+# OpenMP (required for __gnu_parallel::sort in MergeTree.cpp)
+find_package(OpenMP REQUIRED)
+
 # Create library
 add_library(ContourTree STATIC ${SOURCE_FILES} ${HEADER_FILES})
+set_target_properties(ContourTree PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_link_libraries(ContourTree PUBLIC OpenMP::OpenMP_CXX)
 
 add_executable(TestContourTree ${MAIN_SOURCE_FILES})
 target_link_libraries(TestContourTree ContourTree)
@@ -66,16 +71,10 @@ FetchContent_MakeAvailable(pybind11)
 
 find_package(Python3 COMPONENTS Interpreter Development NumPy REQUIRED)
 
-add_library(pyct MODULE
-    python/PyBindings.cpp
-)
-target_link_libraries(pyct PRIVATE pybind11::module ContourTree Python3::Python Python3::NumPy)
+pybind11_add_module(pyct python/PyBindings.cpp)
+target_link_libraries(pyct PRIVATE ContourTree Python3::NumPy)
 target_include_directories(pyct PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree)
-set_target_properties(pyct PROPERTIES
-    PREFIX ""
-    OUTPUT_NAME "pyct"
-    SUFFIX ".pyd"
-)
+set_target_properties(pyct PROPERTIES OUTPUT_NAME "pyct")
 
 # Install the library and the python module into the wheel
 install(TARGETS pyct 
