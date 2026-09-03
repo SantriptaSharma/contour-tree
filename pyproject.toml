@@ -36,5 +36,6 @@ install.components = ["python"]
 build-type = "Debug"
 source-dir = "."
 
-# After building, invoke `install`
+# ──────────────────────────────────────────────────────────
+[tool.scikit-build.build]
 targets = ["install"]

@@ -16,7 +16,7 @@ class MergeTree {
 public:
     struct Compare {
         Compare(std::shared_ptr<ScalarFunction> data): data(data) {}
-        bool operator()(int64_t v1, int64_t v2) { return data->lessThan(v1, v2); }
+        bool operator()(int64_t v1, int64_t v2) const { return data->lessThan(v1, v2); }
 
         std::shared_ptr<ScalarFunction> data;
     };

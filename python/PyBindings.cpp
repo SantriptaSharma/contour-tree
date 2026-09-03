@@ -13,6 +13,7 @@
 #include "SimFunction.hpp"
 #include "Persistence.hpp"
 #include "HyperVolume.hpp"
+#include "Volume.hpp"
 #include "TopologicalFeatures.hpp"
 #include "LayoutCT.hpp"
 #include "RichFeature.hpp"
@@ -138,6 +139,10 @@ PYBIND11_MODULE(pyct, m) {
         .def(py::init<const contourtree::ContourTreeData&>(), py::arg("ctData"));
 
     py::class_<contourtree::HyperVolume, std::shared_ptr<contourtree::HyperVolume>, contourtree::SimFunction>(m, "HyperVolume")
+        .def(py::init<const contourtree::ContourTreeData&, std::string>(),
+             py::arg("ctData"), py::arg("partFile"));
+
+    py::class_<contourtree::Volume, std::shared_ptr<contourtree::Volume>, contourtree::SimFunction>(m, "Volume")
         .def(py::init<const contourtree::ContourTreeData&, std::string>(),
              py::arg("ctData"), py::arg("partFile"));
 
@@ -311,4 +316,13 @@ PYBIND11_MODULE(pyct, m) {
     // Expose SaveLayoutToOFF function
     m.def("SaveLayoutToOFF", &contourtree::SaveLayoutToOFF, py::arg("dataName"), py::arg("topk"), py::arg("thresh"),
           "Save layout to OFF file");
+
+    // Expose SaveRichLayoutToOFF function - writes RichFeature metadata (persistence, size,
+    // majority class, homogeneity, majority share) onto each edge line of the OFF file
+    m.def("SaveRichLayoutToOFF", &contourtree::SaveRichLayoutToOFF,
+          py::arg("dataName"), py::arg("topk"), py::arg("thresh"), py::arg("partition"),
+          py::arg("labels"), py::arg("preds") = std::vector<uint32_t>(),
+          py::arg("class_sizes") = std::vector<uint32_t>(),
+            py::arg("class_labels") = std::vector<std::string>(),
+          "Save layout to OFF file, with RichFeature metadata appended to each edge line");
 }

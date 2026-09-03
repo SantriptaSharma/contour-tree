@@ -69,11 +69,7 @@ void MergeTree::setupData() {
 
 void MergeTree::orderVertices() {
     std::cout << "ordering vertices" << std::endl;
-#if defined(WIN32)
     std::sort(sv.begin(), sv.end(), Compare(data));
-#else
-    __gnu_parallel::sort(sv.begin(), sv.end(), Compare(data));
-#endif
 }
 
 void MergeTree::computeJoinTree() {

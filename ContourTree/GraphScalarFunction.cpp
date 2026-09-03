@@ -4,6 +4,7 @@
 #include <fstream>
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <sstream>
 
 namespace contourtree {
@@ -29,12 +30,25 @@ int GraphScalarFunction::getStar(int64_t v, std::vector<int64_t> &star) {
 }
 
 bool GraphScalarFunction::lessThan(int64_t v1, int64_t v2) {
-    if(fnVals[v1] < fnVals[v2]) {
-        return true;
-    } else if(fnVals[v1] == fnVals[v2]) {
-        return (v1 < v2);
+    const scalar_t a = fnVals[v1];
+    const scalar_t b = fnVals[v2];
+
+    if (std::isnan(a) && std::isnan(b)) {
+        return v1 < v2;
     }
-    return false;
+    if (std::isnan(a)) {
+        return false;
+    }
+    if (std::isnan(b)) {
+        return true;
+    }
+    if (a < b) {
+        return true;
+    }
+    if (a > b) {
+        return false;
+    }
+    return v1 < v2;
 }
 
 scalar_t GraphScalarFunction::getFunctionValue(int64_t v) {

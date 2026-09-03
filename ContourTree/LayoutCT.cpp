@@ -1,4 +1,5 @@
 #include "LayoutCT.hpp"
+#include "RichFeature.hpp"
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -197,6 +198,8 @@ static std::vector<std::string> CP_NAMES = {
 };
 
 void SaveLayoutToOFF(std::string dataName, int& topk, float threshold) {
+    std::cout << "Saving layout to OFF file: " << dataName << ".off\n";
+
     TopologicalFeatures topoFeatures;
     topoFeatures.loadData(dataName);
 
@@ -225,9 +228,64 @@ void SaveLayoutToOFF(std::string dataName, int& topk, float threshold) {
     for(int i = 0;i < features.size();i ++) {
         size_t fromIndex = nodemap[features[i].from];
         size_t toIndex = nodemap[features[i].to];
-        
-        op << "2 " << fromIndex << " " << toIndex << " " << data.fnVals[fromIndex] << " " << data.fnVals[toIndex] << " ";
-        op << CP_NAMES[data.type[fromIndex]] << " " << CP_NAMES[data.type[toIndex]] << "\n";
+
+        op << "2 " << fromIndex << " " << toIndex << " " << data.fnVals[features[i].from] << " " << data.fnVals[features[i].to] << " ";
+        op << CP_NAMES[data.type[features[i].from]] << " " << CP_NAMES[data.type[features[i].to]] << "\n";
+    }
+    op.close();
+}
+
+void SaveRichLayoutToOFF(std::string dataName, int& topk, float threshold,
+                         const std::vector<uint32_t>& partition,
+                         const std::vector<uint32_t>& labels,
+                         const std::vector<uint32_t>& preds,
+                         const std::vector<uint32_t>& class_sizes,
+                         const std::vector<std::string>& class_labels) {
+    std::cout << "Saving rich layout to OFF file: " << dataName << ".off\n";
+
+    TopologicalFeatures topoFeatures;
+    topoFeatures.loadData(dataName);
+
+    // Resolve topk (e.g. -1 meaning "as many as pass threshold") before it's used for layout;
+    // computeRichFeatures takes topk by value, so it can't report the resolved count back to us.
+    topoFeatures.getArcFeatures(topk, threshold);
+
+    std::vector<RichFeature> features = computeRichFeatures(
+        topoFeatures, topk, threshold, partition, labels, preds, class_sizes);
+
+    LayoutCT layout(&topoFeatures);
+    layout.layoutTree(topk);
+    std::unordered_map<uint32_t, Point> locations = layout.getNodeLocations();
+
+    int ct = 0;
+    std::unordered_map<uint32_t,uint32_t> nodemap;
+    std::vector<uint32_t> nodeids;
+    for(auto l: locations) {
+        nodemap[l.first] = ct ++;
+        nodeids.push_back(l.first);
+    }
+
+    std::ofstream op(dataName + ".off");
+    op << "OFF\n";
+    op << ct << " " << features.size() << " 0\n";
+    for(int i = 0;i < ct; i++) {
+        op << locations[nodeids[i]].x << " " << locations[nodeids[i]].y << " " << locations[nodeids[i]].z << "\n";
+    }
+    for(size_t i = 0;i < features.size();i ++) {
+        const RichFeature& f = features[i];
+        size_t fromIndex = nodemap[f.from];
+        size_t toIndex = nodemap[f.to];
+        float majorityShare = f.size > 0 ? static_cast<float>(f.major_class_size) / f.size : 0.0f;
+
+        op << "2 " << fromIndex << " " << toIndex << " " << f.fn_from << " " << f.fn_to << " ";
+        op << CP_NAMES[(size_t) f.type_from] << " " << CP_NAMES[(size_t) f.type_to] << " ";
+          op << f.id << " " << f.persistence << " " << f.size << " " << f.majority_class << " "
+              << f.major_class_size << " " << f.homogeneity << " " << majorityShare << " "
+           << f.from << " " << f.to;
+        if (f.majority_class < class_labels.size()) {
+            op << " " << class_labels[f.majority_class];
+        }
+        op << "\n";
     }
     op.close();
 }

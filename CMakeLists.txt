@@ -12,6 +12,7 @@ set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree/DisjointSets.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree/Grid3D.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree/HyperVolume.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree/Volume.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree/MergeTree.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree/Persistence.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree/ScalarFunction.hpp
@@ -29,6 +30,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree/ContourTree.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree/ContourTreeData.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree/HyperVolume.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree/Volume.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree/MergeTree.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree/Persistence.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ContourTree/SimplifyCT.cpp

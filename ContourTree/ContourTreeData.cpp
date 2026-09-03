@@ -17,6 +17,7 @@ void ContourTreeData::loadBinFile(std::string fileName) {
         std::ifstream ip(fileName + ".rg.dat");
         ip >> noNodes;
         ip >> noArcs;
+        std::cout << "noNodes: " << noNodes << ", noArcs: " << noArcs << std::endl;
         assert(noNodes == noArcs + 1);
         ip.close();
     }

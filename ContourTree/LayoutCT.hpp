@@ -4,6 +4,8 @@
 #include "TopologicalFeatures.hpp"
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
+#include <stdint.h>
 namespace contourtree {
 
 struct Point {
@@ -59,6 +61,17 @@ public:
 };
 
 void SaveLayoutToOFF(std::string dataName, int &topk, float thresh);
+
+// Rich variant: also computes per-feature metadata (persistence, size, majority class,
+// homogeneity, majority share) via RichFeature and appends it to each edge line in the
+// OFF file, after the standard "2 v1 v2 val1 val2 type1 type2" columns, as:
+// id persistence size majority_class major_class_size homogeneity majority_share from_node_id to_node_id majority_class_label
+void SaveRichLayoutToOFF(std::string dataName, int &topk, float thresh,
+                         const std::vector<uint32_t>& partition,
+                         const std::vector<uint32_t>& labels,
+                         const std::vector<uint32_t>& preds = std::vector<uint32_t>(),
+                         const std::vector<uint32_t>& class_sizes = std::vector<uint32_t>(),
+                         const std::vector<std::string>& class_labels = std::vector<std::string>());
 
 } // namespace contourtree
 #endif // LAYOUTCT_HPP
